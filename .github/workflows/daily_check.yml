@@ -1,0 +1,51 @@
+name: Auto Proxy Check
+
+# 触发条件
+on:
+  # 1. 定时运行 (UTC时间)
+  # 这里的 '0 */6 * * *' 代表每6小时运行一次
+  schedule:
+    - cron: '0 */6 * * *'
+  
+  # 2. 允许手动触发 (在 Actions 页面点击 Run workflow)
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    # 赋予写入权限，这是 push 代码必须的
+    permissions:
+      contents: write
+
+    steps:
+      # 第一步：拉取代码
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 第二步：设置 Python 环境
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      # 第三步：安装依赖
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      # 第四步：运行检测脚本
+      - name: Run Proxy Checker
+        run: python main.py
+
+      # 第五步：提交并推送更改
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          
+          # 添加 results 目录下的所有文件
+          git add results/*.txt
+          
+          # 检查是否有变更，如果有则提交，没有则跳过 (防止报错)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update proxy list [$(date)]" && git push)
